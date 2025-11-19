@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SocioAI</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>SocioAI</h1>
+    <nav>
+      <ul>
+        <li><a href="feed.html">Feed</a></li>
+        <li><a href="create.html">Create</a></li>
+      </ul>
+      <button id="feedBtn">Feed</button>
+      <button id="reelsBtn">Reels</button>
+      <button id="chatBtn">Messages</button>
+      <button id="aiBtn">Ask AI 🤖</button>
+    </nav>
+  </header>
+
+  <main id="content"></main>
+
+  <div id="aiChatbot" class="hidden">
+    <div id="aiMessages"></div>
+    <input id="aiInput" type="text" placeholder="Ask AI..." />
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

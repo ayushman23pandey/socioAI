@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Post</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>SocioAI</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="feed.html">Feed</a>
+      <a href="create.html" class="active">Create Post</a>
+    </nav>
+  </header>
+
+  <main class="create-container">
+    <form id="createForm" enctype="multipart/form-data">
+      <h2>Create a New Post</h2>
+      <textarea name="text" id="text" placeholder="What's on your mind?" rows="4"></textarea>
+
+      <div class="upload-section">
+        <label for="file">Attach Image/Video (optional):</label>
+        <input type="file" name="file" id="file" accept="image/*,video/*" />
+      </div>
+
+      <input type="text" name="caption" id="caption" placeholder="Caption (required if uploading media)" />
+
+      <button type="submit">Post</button>
+      <p id="status"></p>
+    </form>
+  </main>
+
+  <script src="create.js"></script>
+</body>
+</html>
