@@ -1,0 +1,96 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  header {
+    background: #111;
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  nav a {
+    color: white;
+    margin-left: 15px;
+    text-decoration: none;
+  }
+  
+  #chatContainer {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 60px);
+  }
+  
+  #conversationsPanel {
+    width: 30%;
+    border-right: 1px solid #ccc;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  
+  #chatPanel {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  #chatHeader {
+    padding: 15px;
+    border-bottom: 1px solid #ccc;
+    font-weight: bold;
+  }
+  
+  #messagesBox {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f8f8f8;
+  }
+  
+  .message {
+    margin-bottom: 12px;
+    padding: 10px;
+    max-width: 60%;
+    border-radius: 8px;
+    clear: both; /* Ensures messages don't overlap on the same line */
+}
+
+.me {
+    background: #007bff; /* Blue */
+    color: white;
+    margin-left: auto; /* Pushes to Right */
+}
+
+.them {
+    background: #e3e3e3; /* Gray */
+    color: black;
+    margin-right: auto; /* Pushes to Left (default, but good to be explicit) */
+}
+  
+  #chatInputArea {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+  }
+  
+  #chatInput {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+  }
+  
+  #sendBtn {
+    padding: 10px 15px;
+    margin-left: 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  

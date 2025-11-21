@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Messages</title>
+  <link rel="stylesheet" href="messages.css" />
+</head>
+<body>
+
+  <header>
+    <div class="logo">My App</div>
+    <nav>
+      <a href="index.html">Home</a> <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <div id="chatContainer">
+    <div id="conversationsPanel">
+      <h3>Conversations</h3>
+      <div id="conversationsList"></div>
+    </div>
+
+    <div id="chatPanel">
+      <div id="chatHeader">Select a conversation</div>
+      
+      <div id="messagesBox">
+        </div>
+
+      <div id="chatInputArea">
+        <input type="text" id="chatInput" placeholder="Type a message..." />
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="messages.js"></script>
+  <script>
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>

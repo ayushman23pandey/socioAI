@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SocioAI – Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+
+    header {
+      background: #0077ff;
+      padding: 15px 20px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    nav a {
+      color: white;
+      margin-left: 15px;
+      text-decoration: none;
+      font-size: 15px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+    }
+
+    .main-section {
+      padding: 30px;
+      text-align: center;
+    }
+
+    .main-section h2 {
+      margin-bottom: 20px;
+    }
+
+    .links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      width: 180px;
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+      text-decoration: none;
+      color: black;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    #logoutBtn {
+      background: red;
+      margin-left: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>SocioAI Dashboard</h1>
+  <nav>
+    <a href="feed.html">Feed</a>
+    <a href="create.html">Create Post</a>
+    <a href="messages.html">Messages</a>
+    <a href="reels.html">Reels</a>
+    <a href="#" id="logoutBtn">Logout</a>
+  </nav>
+</header>
+
+<div class="main-section">
+  <h2>Welcome to SocioAI</h2>
+  <p>Select what you want to do</p>
+
+  <div class="links">
+    <a class="card" href="feed.html">View Feed</a>
+    <a class="card" href="create.html">Create Post</a>
+    <a class="card" href="messages.html">Messages</a>
+    <a class="card" href="reels.html">Watch Reels</a>
+  </div>
+</div>
+
+<script>
+  // Check login
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "login.html";
+  }
+
+  // Logout
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+  });
+</script>
+
+</body>
+</html>

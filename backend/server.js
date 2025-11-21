@@ -13,6 +13,21 @@ const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12');
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
 const ACCESS_EXP = process.env.ACCESS_TOKEN_EXPIRY || '15m';
 const JWT_SECRET = "supersecretkeyhere123"; // ⚠️ replace with something long & random
+function authenticate(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) return res.status(401).json({ error: "No token provided" });
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
 
 function hashPassword(plain) {
   return bcrypt.hashSync(plain, BCRYPT_ROUNDS);
@@ -71,6 +86,15 @@ try {
     throw err;
   }
 }
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_id INTEGER,
+    receiver_id INTEGER,
+    message TEXT,
+    createdAt TEXT
+  )
+`).run();
 
 
 // Setup file storage for uploads
@@ -176,6 +200,116 @@ app.post("/login", async (req, res) => {
 
   res.json({ message: "Login successful", token });
 });
+app.get("/me", authenticate, (req, res) => {
+  res.json({ user: req.user });
+});
+/**
+ * POST /messages/send
+ * Body: { receiver_id: number, message: string }
+ * Auth: required (authenticate)
+ */
+app.post('/messages/send', authenticate, (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const { receiver_id, message } = req.body;
+
+    if (!receiver_id || !message || !message.trim()) {
+      return res.status(400).json({ error: 'receiver_id and message are required' });
+    }
+
+    // Optional: check that receiver exists
+    const receiver = db.prepare('SELECT id, email FROM users WHERE id = ?').get(receiver_id);
+    if (!receiver) return res.status(404).json({ error: 'Receiver not found' });
+
+    const createdAt = new Date().toISOString();
+    const stmt = db.prepare(`
+      INSERT INTO messages (sender_id, receiver_id, message, createdAt)
+      VALUES (?, ?, ?, ?)
+    `);
+    const info = stmt.run(senderId, receiver_id, message, createdAt);
+
+    const saved = db.prepare('SELECT * FROM messages WHERE id = ?').get(info.lastInsertRowid);
+
+    res.status(201).json({ message: 'Sent', data: saved });
+  } catch (err) {
+    console.error('POST /messages/send', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * GET /messages/chat?user=<id>
+ * Returns messages between current user and the user id in query param
+ * Auth: required
+ */
+app.get('/messages/chat', authenticate, (req, res) => {
+  try {
+    const me = req.user.id;
+    const otherId = parseInt(req.query.user, 10);
+    if (!otherId) return res.status(400).json({ error: 'Missing user query param' });
+
+    // only allow if other user exists
+    const other = db.prepare('SELECT id, email FROM users WHERE id = ?').get(otherId);
+    if (!other) return res.status(404).json({ error: 'User not found' });
+
+    const stmt = db.prepare(`
+      SELECT * FROM messages
+      WHERE (sender_id = ? AND receiver_id = ?)
+         OR (sender_id = ? AND receiver_id = ?)
+      ORDER BY createdAt ASC
+    `);
+
+    const rows = stmt.all(me, otherId, otherId, me);
+    res.json({ conversationWith: other, messages: rows });
+  } catch (err) {
+    console.error('GET /messages/chat', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * GET /messages/conversations
+ * Returns a list of conversation peers with the last message
+ * Auth: required
+ */
+app.get('/messages/conversations', authenticate, (req, res) => {
+  try {
+    const me = req.user.id;
+
+    // This query collects peers and latest message between me and each peer
+    // We select messages involving me, then group by peer and pick the latest createdAt
+    const stmt = db.prepare(`
+      SELECT peers.peer_id AS user_id,
+             u.email,
+             m.message,
+             m.sender_id,
+             m.receiver_id,
+             m.createdAt
+      FROM (
+        SELECT
+          CASE
+            WHEN sender_id = ? THEN receiver_id
+            ELSE sender_id
+          END as peer_id,
+          MAX(createdAt) AS lastAt
+        FROM messages
+        WHERE sender_id = ? OR receiver_id = ?
+        GROUP BY peer_id
+      ) AS peers
+      LEFT JOIN messages m
+        ON ( (m.sender_id = ? AND m.receiver_id = peers.peer_id OR m.sender_id = peers.peer_id AND m.receiver_id = ?) AND m.createdAt = peers.lastAt )
+      LEFT JOIN users u ON u.id = peers.peer_id
+      ORDER BY m.createdAt DESC
+    `);
+
+    const rows = stmt.all(me, me, me, me, me);
+    res.json({ conversations: rows });
+  } catch (err) {
+    console.error('GET /messages/conversations', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

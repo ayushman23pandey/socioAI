@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: #fff;
+            width: 350px;
+            padding: 25px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #0078ff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        a {
+            text-decoration: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Login</h2>
+
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+
+    <button onclick="login()">Login</button>
+    <p><a href="register.html">Create an account</a></p>
+
+    <div id="msg"></div>
+</div>
+
+<script>
+async function login() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const msg = document.getElementById("msg");
+
+    try {
+        const res = await fetch("http://localhost:5000/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            msg.innerText = data.error || "Login failed.";
+            return;
+        }
+
+        // Save token locally
+        localStorage.setItem("token", data.token);
+
+        msg.innerText = "Login successful. Redirecting…";
+
+        setTimeout(() => {
+            window.location.href = "home.html";
+        }, 800);
+
+    } catch (err) {
+        msg.innerText = "Network error.";
+    }
+}
+</script>
+</body>
+</html>
