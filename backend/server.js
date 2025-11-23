@@ -12,14 +12,12 @@ const cookieParser = require('cookie-parser');
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12');
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
 const ACCESS_EXP = process.env.ACCESS_TOKEN_EXPIRY || '15m';
-const JWT_SECRET = "supersecretkeyhere123"; // ⚠️ replace with something long & random
+const JWT_SECRET = "supersecretkeyhere123";
+
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
-
   if (!authHeader) return res.status(401).json({ error: "No token provided" });
-
   const token = authHeader.split(" ")[1];
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
@@ -29,36 +27,19 @@ function authenticate(req, res, next) {
   }
 }
 
-function hashPassword(plain) {
-  return bcrypt.hashSync(plain, BCRYPT_ROUNDS);
-}
-
-function verifyPassword(plain, hash) {
-  return bcrypt.compareSync(plain, hash);
-}
-
-function signAccessToken(payload) {
-  return jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXP });
-}
-
-function signRefreshToken(payload) {
-  return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXP });
-}
-
 const app = express();
-app.use(cookieParser()); // enable cookies
-// Allow requests from your frontend
+app.use(cookieParser());
 app.use(cors());
-
 
 const PORT = 5000;
 
-// Middleware to parse JSON bodies
 app.use(express.json());
 app.use("/feeds/uploads", express.static(path.join(__dirname, "feeds", "uploads")));
+app.use("/reels/uploads", express.static(path.join(__dirname, "reels", "uploads")));
 
 const db = new Database(path.join(__dirname, "database", "feeds.db"));
 
+// Create tables
 db.prepare(`
   CREATE TABLE IF NOT EXISTS feeds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,11 +47,11 @@ db.prepare(`
     caption TEXT,
     text TEXT,
     filePath TEXT,
-    createdAt TEXT
+    createdAt TEXT,
+    user_id INTEGER
   )
 `).run();
 
-// after db is defined (better-sqlite3)
 db.prepare(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,13 +60,7 @@ db.prepare(`
     createdAt TEXT
   )
 `).run();
-try {
-  db.prepare("ALTER TABLE feeds ADD COLUMN user_id INTEGER").run();
-} catch (err) {
-  if (!/duplicate column name/i.test(err.message)) {
-    throw err;
-  }
-}
+
 db.prepare(`
   CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,9 +71,21 @@ db.prepare(`
   )
 `).run();
 
+// NEW: Reels table
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS reels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    videoPath TEXT,
+    caption TEXT,
+    likes INTEGER DEFAULT 0,
+    views INTEGER DEFAULT 0,
+    createdAt TEXT
+  )
+`).run();
 
-// Setup file storage for uploads
-const storage = multer.diskStorage({
+// Setup file storage for feeds
+const feedStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "feeds/uploads");
   },
@@ -107,17 +94,38 @@ const storage = multer.diskStorage({
     cb(null, uniqueName);
   },
 });
-const upload = multer({ storage });
+const feedUpload = multer({ storage: feedStorage });
 
+// Setup file storage for reels
+const reelStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = "reels/uploads";
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + "-" + file.originalname;
+    cb(null, uniqueName);
+  },
+});
+const reelUpload = multer({ 
+  storage: reelStorage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only video files are allowed!'), false);
+    }
+  }
+});
 
-
-// ✅ POST /feed - create a new feed
-
-app.post("/feeds", upload.single("file"), (req, res) => {
+// ===== FEEDS ENDPOINTS =====
+app.post("/feeds", feedUpload.single("file"), (req, res) => {
   const { caption, text } = req.body;
   const file = req.file;
 
-  // Validation
   if (!file && !text) {
     return res.status(400).json({
       error: "Feed must contain either a file/video (with caption) or text.",
@@ -146,12 +154,125 @@ app.post("/feeds", upload.single("file"), (req, res) => {
     feed: { id: info.lastInsertRowid, type, caption, text, filePath, createdAt },
   });
 });
-// ✅ (optional) GET /feeds - view all feeds
+
 app.get("/feeds", (req, res) => {
   const stmt = db.prepare("SELECT * FROM feeds ORDER BY createdAt DESC");
   const feeds = stmt.all();
   res.json(feeds);
 });
+
+// ===== REELS ENDPOINTS =====
+
+// Create a new reel
+app.post("/reels", authenticate, reelUpload.single("video"), (req, res) => {
+  try {
+    const { caption } = req.body;
+    const file = req.file;
+    const userId = req.user.id;
+
+    if (!file) {
+      return res.status(400).json({ error: "Video file is required" });
+    }
+
+    const videoPath = `/reels/uploads/${file.filename}`;
+    const createdAt = new Date().toISOString();
+
+    const stmt = db.prepare(`
+      INSERT INTO reels (user_id, videoPath, caption, createdAt)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    const info = stmt.run(userId, videoPath, caption || "", createdAt);
+
+    res.status(201).json({
+      message: "Reel created successfully!",
+      reel: {
+        id: info.lastInsertRowid,
+        user_id: userId,
+        videoPath,
+        caption,
+        likes: 0,
+        views: 0,
+        createdAt
+      },
+    });
+  } catch (err) {
+    console.error("Create reel error:", err);
+    res.status(500).json({ error: "Failed to create reel" });
+  }
+});
+
+// Get reels with pagination
+app.get("/reels", (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 0;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = page * limit;
+
+    const stmt = db.prepare(`
+      SELECT r.*, u.email as userEmail 
+      FROM reels r
+      LEFT JOIN users u ON r.user_id = u.id
+      ORDER BY r.createdAt DESC
+      LIMIT ? OFFSET ?
+    `);
+
+    const reels = stmt.all(limit, offset);
+    
+    // Get total count
+    const countStmt = db.prepare("SELECT COUNT(*) as total FROM reels");
+    const { total } = countStmt.get();
+
+    res.json({
+      reels,
+      hasMore: offset + reels.length < total,
+      total
+    });
+  } catch (err) {
+    console.error("Get reels error:", err);
+    res.status(500).json({ error: "Failed to fetch reels" });
+  }
+});
+
+// Like a reel
+app.post("/reels/:id/like", authenticate, (req, res) => {
+  try {
+    const reelId = req.params.id;
+    
+    const stmt = db.prepare(`
+      UPDATE reels SET likes = likes + 1 WHERE id = ?
+    `);
+    
+    stmt.run(reelId);
+    
+    const reel = db.prepare("SELECT * FROM reels WHERE id = ?").get(reelId);
+    
+    res.json({ likes: reel.likes });
+  } catch (err) {
+    console.error("Like reel error:", err);
+    res.status(500).json({ error: "Failed to like reel" });
+  }
+});
+
+// Increment view count
+app.post("/reels/:id/view", (req, res) => {
+  try {
+    const reelId = req.params.id;
+    
+    const stmt = db.prepare(`
+      UPDATE reels SET views = views + 1 WHERE id = ?
+    `);
+    
+    stmt.run(reelId);
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error("View reel error:", err);
+    res.status(500).json({ error: "Failed to record view" });
+  }
+});
+
+// ===== AUTH ENDPOINTS =====
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
@@ -159,13 +280,11 @@ app.post("/register", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
-  // check if user exists
   const existing = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
   if (existing) {
     return res.status(400).json({ error: "Email already registered" });
   }
 
-  // hash password
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const stmt = db.prepare(`
@@ -176,6 +295,7 @@ app.post("/register", async (req, res) => {
 
   res.json({ message: "User registered successfully", userId: info.lastInsertRowid });
 });
+
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -193,21 +313,18 @@ app.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  // ✅ Create long-lived JWT (e.g., 30 days)
   const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-    expiresIn: "30d", // long lived token
+    expiresIn: "30d",
   });
 
   res.json({ message: "Login successful", token });
 });
+
 app.get("/me", authenticate, (req, res) => {
   res.json({ user: req.user });
 });
-/**
- * POST /messages/send
- * Body: { receiver_id: number, message: string }
- * Auth: required (authenticate)
- */
+
+// ===== MESSAGES ENDPOINTS =====
 app.post('/messages/send', authenticate, (req, res) => {
   try {
     const senderId = req.user.id;
@@ -217,7 +334,6 @@ app.post('/messages/send', authenticate, (req, res) => {
       return res.status(400).json({ error: 'receiver_id and message are required' });
     }
 
-    // Optional: check that receiver exists
     const receiver = db.prepare('SELECT id, email FROM users WHERE id = ?').get(receiver_id);
     if (!receiver) return res.status(404).json({ error: 'Receiver not found' });
 
@@ -237,18 +353,12 @@ app.post('/messages/send', authenticate, (req, res) => {
   }
 });
 
-/**
- * GET /messages/chat?user=<id>
- * Returns messages between current user and the user id in query param
- * Auth: required
- */
 app.get('/messages/chat', authenticate, (req, res) => {
   try {
     const me = req.user.id;
     const otherId = parseInt(req.query.user, 10);
     if (!otherId) return res.status(400).json({ error: 'Missing user query param' });
 
-    // only allow if other user exists
     const other = db.prepare('SELECT id, email FROM users WHERE id = ?').get(otherId);
     if (!other) return res.status(404).json({ error: 'User not found' });
 
@@ -267,17 +377,10 @@ app.get('/messages/chat', authenticate, (req, res) => {
   }
 });
 
-/**
- * GET /messages/conversations
- * Returns a list of conversation peers with the last message
- * Auth: required
- */
 app.get('/messages/conversations', authenticate, (req, res) => {
   try {
     const me = req.user.id;
 
-    // This query collects peers and latest message between me and each peer
-    // We select messages involving me, then group by peer and pick the latest createdAt
     const stmt = db.prepare(`
       SELECT peers.peer_id AS user_id,
              u.email,
@@ -306,33 +409,6 @@ app.get('/messages/conversations', authenticate, (req, res) => {
     res.json({ conversations: rows });
   } catch (err) {
     console.error('GET /messages/conversations', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-/**
- * GET /users/search?email=<email>
- * Search for a user by email
- * Auth: required
- */
-app.get('/users/search', authenticate, (req, res) => {
-  try {
-    const searchEmail = req.query.email;
-
-    if (!searchEmail) {
-      return res.status(400).json({ error: 'Email query parameter required' });
-    }
-
-    // Search for user with that email
-    const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(searchEmail);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ user });
-  } catch (err) {
-    console.error('GET /users/search', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
