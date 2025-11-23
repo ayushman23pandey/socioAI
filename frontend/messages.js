@@ -11,6 +11,32 @@ let currentChatEmail = "";
 let myId = null; // Store logged-in user ID
 
 // --------------------------------------------------
+// URL STATE MANAGEMENT
+// --------------------------------------------------
+
+function saveCurrentChatToUrl() {
+    if (currentChatUser) {
+        const url = new URL(window.location);
+        url.searchParams.set("user", currentChatUser);
+        url.searchParams.set("email", currentChatEmail);
+        window.history.replaceState(null, "", url);
+    }
+}
+
+function loadCurrentChatFromUrl() {
+    const url = new URL(window.location);
+    const userId = url.searchParams.get("user");
+    const userEmail = url.searchParams.get("email");
+    
+    if (userId && userEmail) {
+        currentChatUser = parseInt(userId, 10);
+        currentChatEmail = userEmail;
+        return true;
+    }
+    return false;
+}
+
+// --------------------------------------------------
 // INITIALIZATION
 // --------------------------------------------------
 
@@ -26,13 +52,108 @@ async function init() {
         const data = await res.json();
         myId = data.user.id; // Save my ID globally
         
-        // 2. Load the list of conversations
+        // 2. Try to restore chat from URL
+        const hasRestoredChat = loadCurrentChatFromUrl();
+        
+        // 3. Load the list of conversations
         loadConversations();
+        
+        // 4. If we had a chat open, reload it
+        if (hasRestoredChat) {
+            loadChat();
+        }
+        
+        // 5. Setup search functionality
+        setupSearch();
         
     } catch (err) {
         console.error("Login check failed", err);
         window.location.href = "login.html";
     }
+}
+
+// --------------------------------------------------
+// SEARCH FOR USER BY EMAIL
+// --------------------------------------------------
+
+async function searchUserByEmail(email) {
+    try {
+        const res = await fetch(`${API}/users/search?email=${encodeURIComponent(email)}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            console.error("Search failed:", res.status);
+            return null;
+        }
+
+        const data = await res.json();
+        return data.user;
+    } catch (err) {
+        console.error("Error searching user:", err);
+        return null;
+    }
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById("searchEmail");
+    const searchBtn = document.getElementById("searchBtn");
+    const searchResults = document.getElementById("searchResults");
+
+    searchBtn.addEventListener("click", async () => {
+        const email = searchInput.value.trim();
+
+        if (!email) {
+            alert("Please enter an email address");
+            return;
+        }
+
+        if (email === localStorage.getItem("userEmail")) {
+            alert("You cannot chat with yourself!");
+            return;
+        }
+
+        searchResults.innerHTML = "Searching...";
+
+        const user = await searchUserByEmail(email);
+
+        if (user) {
+            searchResults.innerHTML = `
+                <div style="background-color: #f0f0f0; padding: 10px; border-radius: 4px; text-align: center;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">${user.email}</div>
+                    <button 
+                        onclick="startNewChat(${user.id}, '${user.email}')"
+                        style="padding: 6px 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                    >
+                        Start Chat
+                    </button>
+                </div>
+            `;
+        } else {
+            searchResults.innerHTML = '<div style="color: #d32f2f; padding: 10px;">User not found</div>';
+        }
+    });
+
+    // Allow pressing Enter to search
+    searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") searchBtn.click();
+    });
+}
+
+function startNewChat(userId, userEmail) {
+    currentChatUser = userId;
+    currentChatEmail = userEmail;
+    saveCurrentChatToUrl();
+
+    // Visual highlight
+    document.querySelectorAll("#conversationsList > div").forEach(d => d.style.backgroundColor = "transparent");
+
+    // Clear search
+    document.getElementById("searchEmail").value = "";
+    document.getElementById("searchResults").innerHTML = "";
+
+    loadChat();
+    loadConversations(); // Refresh to show new conversation
 }
 
 // --------------------------------------------------
@@ -61,6 +182,11 @@ async function loadConversations() {
 
         item.dataset.id = conv.user_id;
         
+        // Highlight if this is the current chat
+        if (conv.user_id === currentChatUser) {
+            item.style.backgroundColor = "#eef";
+        }
+        
         // Show email and last message
         item.innerHTML = `
             <div style="font-weight:bold;">${conv.email || 'User ' + conv.user_id}</div>
@@ -72,6 +198,7 @@ async function loadConversations() {
         item.addEventListener("click", () => {
             currentChatUser = conv.user_id;
             currentChatEmail = conv.email;
+            saveCurrentChatToUrl();
             
             // Visual highlight for selected chat
             document.querySelectorAll("#conversationsList > div").forEach(d => d.style.backgroundColor = "transparent");
@@ -150,8 +277,9 @@ async function sendMessage() {
 
     if (res.ok) {
         input.value = "";
-        loadChat(); // Reload immediately
-        loadConversations(); // Update sidebar preview
+        loadChat(); // Reload messages
+        // Only update the conversation list preview without losing current chat state
+        loadConversations();
     }
 }
 

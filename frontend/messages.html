@@ -18,6 +18,24 @@
   <div id="chatContainer">
     <div id="conversationsPanel">
       <h3>Conversations</h3>
+      
+      <!-- Search for new person by email -->
+      <div id="searchPanel" style="padding: 10px; border-bottom: 2px solid #007bff; margin-bottom: 10px;">
+        <input 
+          type="email" 
+          id="searchEmail" 
+          placeholder="Search by email..." 
+          style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+        />
+        <button 
+          id="searchBtn" 
+          style="width: 100%; margin-top: 5px; padding: 8px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;"
+        >
+          Start Chat
+        </button>
+        <div id="searchResults" style="margin-top: 10px;"></div>
+      </div>
+
       <div id="conversationsList"></div>
     </div>
 

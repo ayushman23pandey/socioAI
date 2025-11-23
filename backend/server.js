@@ -310,6 +310,32 @@ app.get('/messages/conversations', authenticate, (req, res) => {
   }
 });
 
+/**
+ * GET /users/search?email=<email>
+ * Search for a user by email
+ * Auth: required
+ */
+app.get('/users/search', authenticate, (req, res) => {
+  try {
+    const searchEmail = req.query.email;
+
+    if (!searchEmail) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    // Search for user with that email
+    const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(searchEmail);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ user });
+  } catch (err) {
+    console.error('GET /users/search', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
