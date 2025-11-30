@@ -3,36 +3,384 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Post</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Create Post - SocioAI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    textarea,
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+      resize: vertical;
+    }
+
+    textarea:focus,
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      min-height: 120px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px;
+      border: 3px dashed #e0e0e0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: #f9f9f9;
+    }
+
+    .file-input-label:hover {
+      border-color: #667eea;
+      background: #f0f0ff;
+    }
+
+    .file-input-label.has-file {
+      border-color: #667eea;
+      background: #f0f0ff;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      left: -9999px;
+    }
+
+    .file-icon {
+      font-size: 40px;
+    }
+
+    .file-text {
+      font-size: 14px;
+      color: #666;
+    }
+
+    #preview {
+      margin-top: 20px;
+      display: none;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #preview img,
+    #preview video {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border-radius: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      display: none;
+    }
+
+    #status.success {
+      background: #d4edda;
+      color: #155724;
+      display: block;
+    }
+
+    #status.error {
+      background: #f8d7da;
+      color: #721c24;
+      display: block;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>SocioAI</h1>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="feed.html">Feed</a>
-      <a href="create.html" class="active">Create Post</a>
-    </nav>
-  </header>
+  <div class="container">
+    <h1>✏️ Create Post</h1>
+    <p class="subtitle">Share your thoughts with the community</p>
 
-  <main class="create-container">
     <form id="createForm" enctype="multipart/form-data">
-      <h2>Create a New Post</h2>
-      <textarea name="text" id="text" placeholder="What's on your mind?" rows="4"></textarea>
-
-      <div class="upload-section">
-        <label for="file">Attach Image/Video (optional):</label>
-        <input type="file" name="file" id="file" accept="image/*,video/*" />
+      <div class="form-group">
+        <label for="text">What's on your mind?</label>
+        <textarea 
+          id="text" 
+          name="text" 
+          placeholder="Share your thoughts..."
+          maxlength="1000"
+        ></textarea>
+        <div class="help-text">Text content (optional if adding media)</div>
       </div>
 
-      <input type="text" name="caption" id="caption" placeholder="Caption (required if uploading media)" />
+      <div class="form-group">
+        <label>Add Image or Video (optional)</label>
+        <div class="file-input-wrapper">
+          <label for="file" class="file-input-label" id="fileLabel">
+            <span class="file-icon">📎</span>
+            <span class="file-text">Click to select media</span>
+          </label>
+          <input 
+            type="file" 
+            id="file" 
+            name="file" 
+            accept="image/*,video/*"
+          />
+        </div>
+        <div id="preview"></div>
+      </div>
 
-      <button type="submit">Post</button>
-      <p id="status"></p>
+      <div class="form-group">
+        <label for="caption">Caption</label>
+        <input 
+          type="text" 
+          id="caption" 
+          name="caption" 
+          placeholder="Add a caption (required if uploading media)"
+          maxlength="200"
+        />
+        <div class="help-text">This will be displayed as the post title</div>
+      </div>
+
+      <button type="submit" class="btn" id="submitBtn">
+        Post
+      </button>
+
+      <div id="status"></div>
     </form>
-  </main>
 
-  <script src="create.js"></script>
+    <a href="feed.html" class="back-link">← Back to Feed</a>
+  </div>
+
+  <script>
+    const API = "http://localhost:5000";
+    const form = document.getElementById("createForm");
+    const fileInput = document.getElementById("file");
+    const fileLabel = document.getElementById("fileLabel");
+    const preview = document.getElementById("preview");
+    const status = document.getElementById("status");
+    const submitBtn = document.getElementById("submitBtn");
+    const textInput = document.getElementById("text");
+    const captionInput = document.getElementById("caption");
+
+    // Check auth
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login first");
+      window.location.href = "login.html";
+    }
+
+    // Handle file selection
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      
+      if (file) {
+        // Update label
+        fileLabel.classList.add("has-file");
+        fileLabel.querySelector(".file-text").textContent = file.name;
+        
+        // Show preview
+        const fileURL = URL.createObjectURL(file);
+        const isVideo = file.type.startsWith("video/");
+        
+        preview.innerHTML = isVideo
+          ? `<video src="${fileURL}" controls></video>`
+          : `<img src="${fileURL}" alt="Preview">`;
+        preview.style.display = "block";
+        
+        // Validate file
+        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+          showStatus("Please select a valid image or video file", "error");
+          fileInput.value = "";
+          preview.style.display = "none";
+          return;
+        }
+        
+        // Check file size (max 50MB)
+        const maxSize = 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+          showStatus("File is too large. Maximum size is 50MB", "error");
+          fileInput.value = "";
+          preview.style.display = "none";
+          return;
+        }
+      }
+    });
+
+    // Handle form submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const text = textInput.value.trim();
+      const caption = captionInput.value.trim();
+      const file = fileInput.files[0];
+      
+      // Validation
+      if (!text && !file) {
+        showStatus("Please add text or select media", "error");
+        return;
+      }
+      
+      if (file && !caption) {
+        showStatus("Please add a caption for your media", "error");
+        return;
+      }
+      
+      const formData = new FormData();
+      if (text) formData.append("text", text);
+      if (caption) formData.append("caption", caption);
+      if (file) formData.append("file", file);
+      
+      // Disable form
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Posting...";
+      
+      try {
+        const res = await fetch(`${API}/feeds`, {
+          method: "POST",
+          body: formData
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          showStatus("✅ Post created successfully!", "success");
+          
+          // Redirect after 1.5 seconds
+          setTimeout(() => {
+            window.location.href = "feed.html";
+          }, 1500);
+        } else {
+          showStatus(`❌ ${data.error || "Failed to create post"}`, "error");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Post";
+        }
+      } catch (err) {
+        console.error("Post error:", err);
+        showStatus("⚠️ Network error. Please try again.", "error");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Post";
+      }
+    });
+
+    function showStatus(message, type) {
+      status.textContent = message;
+      status.className = type;
+      status.style.display = "block";
+      
+      if (type === "error") {
+        setTimeout(() => {
+          status.style.display = "none";
+        }, 5000);
+      }
+    }
+  </script>
 </body>
 </html>

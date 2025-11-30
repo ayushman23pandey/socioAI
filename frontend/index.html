@@ -3,31 +3,441 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SocioAI</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>SocioAI - Home</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .nav-btn.active {
+      background: #667eea;
+    }
+
+    .logout-btn {
+      background: #ff4757;
+    }
+
+    .logout-btn:hover {
+      background: #ff3838;
+    }
+
+    .main-section {
+      padding: 40px 20px;
+      text-align: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .welcome-text {
+      color: white;
+      margin-bottom: 40px;
+    }
+
+    .welcome-text h2 {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .welcome-text p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .feature-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+
+    .feature-card {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-decoration: none;
+      color: #333;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .feature-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .feature-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .ai-chatbot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      max-height: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      transition: all 0.3s;
+    }
+
+    .ai-chatbot.hidden {
+      transform: translateY(600px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ai-header {
+      background: #667eea;
+      color: white;
+      padding: 15px;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ai-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+    }
+
+    .ai-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      max-height: 350px;
+    }
+
+    .ai-messages p {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .ai-messages p strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .ai-input-area {
+      padding: 15px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+    }
+
+    .ai-input-area input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .ai-input-area button {
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .ai-fab {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 999;
+      transition: all 0.3s;
+    }
+
+    .ai-fab:hover {
+      transform: scale(1.1);
+    }
+
+    .ai-fab.hidden {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .feature-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .ai-chatbot {
+        width: calc(100% - 40px);
+        left: 20px;
+        right: 20px;
+      }
+    }
+  </style>
 </head>
 <body>
   <header>
     <h1>SocioAI</h1>
-    <nav>
-      <ul>
-        <li><a href="feed.html">Feed</a></li>
-        <li><a href="create.html">Create</a></li>
-      </ul>
-      <button id="feedBtn">Feed</button>
-      <button id="reelsBtn">Reels</button>
-      <button id="chatBtn">Messages</button>
-      <button id="aiBtn">Ask AI 🤖</button>
-    </nav>
+    <div class="nav-buttons">
+      <a href="feed.html" class="nav-btn">📰 Feed</a>
+      <a href="reels.html" class="nav-btn">🎬 Reels</a>
+      <a href="messages.html" class="nav-btn">💬 Messages</a>
+      <button class="nav-btn logout-btn" id="logoutBtn">Logout</button>
+    </div>
   </header>
 
-  <main id="content"></main>
+  <div class="main-section">
+    <div class="welcome-text">
+      <h2>Welcome to SocioAI</h2>
+      <p>Your AI-powered social media platform</p>
+    </div>
 
-  <div id="aiChatbot" class="hidden">
-    <div id="aiMessages"></div>
-    <input id="aiInput" type="text" placeholder="Ask AI..." />
+    <div class="feature-cards">
+      <a href="feed.html" class="feature-card">
+        <div class="feature-icon">📰</div>
+        <div class="feature-title">Feed</div>
+        <div class="feature-desc">View and share posts with your community</div>
+      </a>
+
+      <a href="create.html" class="feature-card">
+        <div class="feature-icon">✏️</div>
+        <div class="feature-title">Create Post</div>
+        <div class="feature-desc">Share your thoughts, photos, and videos</div>
+      </a>
+
+      <a href="reels.html" class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <div class="feature-title">Reels</div>
+        <div class="feature-desc">Watch and upload short vertical videos</div>
+      </a>
+
+      <a href="messages.html" class="feature-card">
+        <div class="feature-icon">💬</div>
+        <div class="feature-title">Messages</div>
+        <div class="feature-desc">Chat with friends and connections</div>
+      </a>
+    </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- AI Chatbot FAB Button -->
+  <button class="ai-fab" id="aiFab">🤖</button>
+
+  <!-- AI Chatbot -->
+  <div class="ai-chatbot hidden" id="aiChatbot">
+    <div class="ai-header">
+      <h3>AI Assistant</h3>
+      <button class="ai-close" id="aiClose">×</button>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <p><strong>AI:</strong> Hi! I'm your SocioAI assistant. How can I help you today?</p>
+    </div>
+    <div class="ai-input-area">
+      <input type="text" id="aiInput" placeholder="Ask me anything..." />
+      <button id="aiSend">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Check authentication
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    // Logout functionality
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      if (confirm("Are you sure you want to logout?")) {
+        localStorage.removeItem("token");
+        window.location.href = "login.html";
+      }
+    });
+
+    // AI Chatbot functionality
+    const aiFab = document.getElementById("aiFab");
+    const aiChatbot = document.getElementById("aiChatbot");
+    const aiClose = document.getElementById("aiClose");
+    const aiInput = document.getElementById("aiInput");
+    const aiSend = document.getElementById("aiSend");
+    const aiMessages = document.getElementById("aiMessages");
+
+    aiFab.addEventListener("click", () => {
+      aiChatbot.classList.remove("hidden");
+      aiFab.classList.add("hidden");
+      aiInput.focus();
+    });
+
+    aiClose.addEventListener("click", () => {
+      aiChatbot.classList.add("hidden");
+      aiFab.classList.remove("hidden");
+    });
+
+    // Store conversation history
+    let conversationHistory = [];
+
+    async function sendAIMessage() {
+      const message = aiInput.value.trim();
+      if (!message) return;
+
+      // Add user message to UI
+      aiMessages.innerHTML += `<p style="background: #f0f0f0; text-align: right; border-radius: 12px; padding: 10px; margin: 8px 0;"><strong>You:</strong> ${escapeHtml(message)}</p>`;
+      aiInput.value = "";
+      aiMessages.scrollTop = aiMessages.scrollHeight;
+
+      // Add to conversation history
+      conversationHistory.push({
+        role: "user",
+        content: message
+      });
+
+      // Show typing indicator
+      const typingIndicator = document.createElement('p');
+      typingIndicator.id = 'typing-indicator';
+      typingIndicator.style.cssText = 'background: #e3f2fd; border-radius: 12px; padding: 10px; margin: 8px 0;';
+      typingIndicator.innerHTML = '<strong>AI:</strong> <em>Typing...</em>';
+      aiMessages.appendChild(typingIndicator);
+      aiMessages.scrollTop = aiMessages.scrollHeight;
+
+      try {
+        const API = "http://localhost:5000";
+        const token = localStorage.getItem("token");
+
+        const response = await fetch(`${API}/gemini/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            message: message,
+            conversationHistory: conversationHistory.slice(-10), // Keep last 10 messages for context
+            model: "gemini-2.5-flash"
+          })
+        });
+
+        // Remove typing indicator
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) indicator.remove();
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to get AI response");
+        }
+
+        const data = await response.json();
+        const aiReply = data.response;
+
+        // Add AI response to conversation history
+        conversationHistory.push({
+          role: "assistant",
+          content: aiReply
+        });
+
+        // Add AI response to UI
+        aiMessages.innerHTML += `<p style="background: #e3f2fd; border-radius: 12px; padding: 10px; margin: 8px 0;"><strong>AI:</strong> ${escapeHtml(aiReply)}</p>`;
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+
+      } catch (error) {
+        console.error("AI Error:", error);
+        
+        // Remove typing indicator
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) indicator.remove();
+
+        // Show error message
+        aiMessages.innerHTML += `<p style="background: #ffebee; color: #c62828; border-radius: 12px; padding: 10px; margin: 8px 0;"><strong>Error:</strong> ${escapeHtml(error.message)}</p>`;
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    aiSend.addEventListener("click", sendAIMessage);
+    aiInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendAIMessage();
+    });
+  </script>
 </body>
 </html>

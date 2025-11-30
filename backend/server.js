@@ -8,7 +8,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const cookieParser = require('cookie-parser');
-
+const { GoogleGenAI } = require("@google/genai");
+require('dotenv').config();
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12');
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
 const ACCESS_EXP = process.env.ACCESS_TOKEN_EXPIRY || '15m';
@@ -412,7 +413,178 @@ app.get('/messages/conversations', authenticate, (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+// Add this at the top with other requires
+const axios = require('axios');
 
+// Add this constant with other environment variables
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY ;
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+
+// ===== GEMINI AI ENDPOINT =====
+// Add this endpoint before app.listen()
+app.post("/gemini/chat", authenticate, async (req, res) => {
+  try {
+    const { message, conversationHistory, model = "gemini-2.5-flash" } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API key not configured" });
+    }
+
+    // Build contents array
+    const contents = [];
+
+    // Add conversation history if provided
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      conversationHistory.forEach(msg => {
+        contents.push({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }]
+        });
+      });
+    }
+
+    // Add current message
+    contents.push({
+      role: "user",
+      parts: [{ text: message }]
+    });
+
+    // Generate content
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: contents
+    });
+
+    const aiResponse = response.text;
+
+    res.json({
+      success: true,
+      response: aiResponse,
+      model
+    });
+
+  } catch (err) {
+    console.error("Gemini API error:", err);
+    
+    if (err.message?.includes("quota") || err.message?.includes("rate limit")) {
+      return res.status(429).json({ error: "Rate limit exceeded. Please try again later." });
+    }
+    
+    if (err.message?.includes("API key") || err.message?.includes("authentication")) {
+      return res.status(500).json({ error: "Invalid API key or authentication failed" });
+    }
+
+    res.status(500).json({ 
+      error: "Failed to get AI response",
+      details: err.message
+    });
+  }
+});
+
+// Streaming endpoint (optional)
+app.post("/gemini/chat/stream", authenticate, async (req, res) => {
+  try {
+    const { message, conversationHistory, model = "gemini-2.0-flash-exp" } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API key not configured" });
+    }
+
+    // Build contents array
+    const contents = [];
+
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      conversationHistory.forEach(msg => {
+        contents.push({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }]
+        });
+      });
+    }
+
+    contents.push({
+      role: "user",
+      parts: [{ text: message }]
+    });
+
+    // Set headers for SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Generate streaming content
+    const stream = await ai.models.generateContentStream({
+      model: model,
+      contents: contents
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.text;
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (err) {
+    console.error("Gemini streaming error:", err);
+    
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: "Failed to stream AI response",
+        details: err.message
+      });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+// List available models
+app.get("/gemini/models", authenticate, async (req, res) => {
+  try {
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API key not configured" });
+    }
+
+    // Common Gemini 2.0 models
+    const models = [
+      {
+        name: "gemini-2.0-flash-exp",
+        displayName: "Gemini 2.0 Flash (Experimental)",
+        description: "Fast and efficient model for most tasks"
+      },
+      {
+        name: "gemini-1.5-pro",
+        displayName: "Gemini 1.5 Pro",
+        description: "Advanced model with extended context window"
+      },
+      {
+        name: "gemini-1.5-flash",
+        displayName: "Gemini 1.5 Flash",
+        description: "Fast model for quick responses"
+      }
+    ];
+
+    res.json({ models });
+
+  } catch (err) {
+    console.error("Gemini models error:", err);
+    res.status(500).json({ error: "Failed to fetch models" });
+  }
+});
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

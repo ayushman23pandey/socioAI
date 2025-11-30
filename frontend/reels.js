@@ -1,7 +1,9 @@
 const API = "http://localhost:5000";
 const container = document.getElementById("reels-container");
+const reelsList = document.getElementById("reels-list");
 const loading = document.getElementById("loading");
 
+const PAGE_SIZE = 5;
 let currentPage = 0;
 let isLoading = false;
 let hasMore = true;
@@ -70,10 +72,11 @@ async function loadReels() {
 
   console.log("Loading reels page:", currentPage);
   isLoading = true;
-  loading.style.display = "block";
+  loading.style.display = "flex";
+  loading.textContent = "Loading...";
 
   try {
-    const res = await fetch(`${API}/reels?page=${currentPage}&limit=5`);
+    const res = await fetch(`${API}/reels?page=${currentPage}&limit=${PAGE_SIZE}`);
     
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
@@ -81,11 +84,12 @@ async function loadReels() {
     
     const data = await res.json();
     console.log("Received reels:", data);
+    const reels = Array.isArray(data.reels) ? data.reels : [];
 
-    if (data.reels && data.reels.length > 0) {
-      data.reels.forEach((reel) => createReelElement(reel));
+    if (reels.length > 0) {
+      reels.forEach((reel) => createReelElement(reel));
       currentPage++;
-      hasMore = data.hasMore;
+      hasMore = typeof data.hasMore === "boolean" ? data.hasMore : reels.length === PAGE_SIZE;
     } else {
       hasMore = false;
       loading.textContent = "No more reels";
@@ -104,14 +108,13 @@ async function loadReels() {
   } finally {
     isLoading = false;
     
-    // Hide loading indicator after content loads
-    setTimeout(() => {
-      if (container.children.length > 0 && !hasMore) {
-        loading.style.display = "none";
-      } else if (container.children.length > 0) {
-        loading.style.display = "block";
-      }
-    }, 100);
+    if (!hasMore) {
+      const hasRenderedReels = reelsList.children.length > 0;
+      loading.textContent = hasRenderedReels ? "No more reels" : "No reels yet";
+      loading.style.display = "flex";
+    } else {
+      loading.style.display = "none";
+    }
   }
 }
 
@@ -177,7 +180,7 @@ function createReelElement(reel) {
 
   reelDiv.appendChild(video);
   reelDiv.appendChild(overlay);
-  container.appendChild(reelDiv);
+  reelsList.appendChild(reelDiv);
 
   // Add like button event listener
   const likeBtn = overlay.querySelector('.like-btn');

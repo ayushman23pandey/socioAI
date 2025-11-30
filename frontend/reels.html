@@ -3,20 +3,473 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Reels</title>
-  <link rel="stylesheet" href="reels.css" />
+  <title>Reels - SocioAI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #000;
+      color: white;
+      overflow-x: hidden;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+    
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    .back-btn, .create-btn {
+      color: white;
+      text-decoration: none;
+      font-size: 18px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    
+    .back-btn:hover, .create-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    #reels-container {
+      padding-top: 60px;
+      scroll-snap-type: y mandatory;
+      height: 100vh;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+    
+    .reel {
+      position: relative;
+      height: calc(100vh - 60px);
+      width: 100%;
+      scroll-snap-align: start;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    
+    .reel video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+    
+    .reel-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      pointer-events: none;
+    }
+    
+    .reel-info {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    
+    .reel-content {
+      flex: 1;
+      pointer-events: all;
+    }
+    
+    .reel-user {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .reel-user::before {
+      content: "👤";
+      font-size: 20px;
+    }
+    
+    .reel-caption {
+      font-size: 14px;
+      line-height: 1.4;
+      max-width: 80%;
+    }
+    
+    .reel-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      pointer-events: all;
+    }
+    
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 28px;
+      transition: transform 0.2s;
+    }
+    
+    .action-btn:active {
+      transform: scale(1.2);
+    }
+    
+    .action-btn span {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .action-btn.liked {
+      color: #ff2e63;
+    }
+    
+    #loading {
+      text-align: center;
+      padding: 20px;
+      color: white;
+      font-size: 14px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .play-pause-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    
+    .reel.show-indicator .play-pause-indicator {
+      opacity: 0.8;
+      animation: fadeOut 0.5s forwards;
+    }
+    
+    @keyframes fadeOut {
+      0% { opacity: 0.8; }
+      100% { opacity: 0; }
+    }
+    
+    @media (max-width: 768px) {
+      .reel-caption {
+        max-width: 70%;
+      }
+    }
+  </style>
 </head>
 <body>
   <header>
-    <a href="home.html" class="back-btn">←</a>
+    <a href="index.html" class="back-btn">←</a>
     <h1>Reels</h1>
     <a href="create-reel.html" class="create-btn">+ Create</a>
   </header>
 
   <div id="reels-container"></div>
 
-  <div id="loading">Loading...</div>
+  <div id="loading">Loading reels...</div>
 
-  <script src="reels.js"></script>
+  <script>
+    const API = "http://localhost:5000";
+    const container = document.getElementById("reels-container");
+    const loading = document.getElementById("loading");
+
+    let currentPage = 0;
+    let isLoading = false;
+    let hasMore = true;
+    let currentPlayingVideo = null;
+    let initialLoadDone = false;
+
+    // Check auth
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login first");
+      window.location.href = "login.html";
+    }
+
+    // Load initial reels
+    loadReels();
+
+    // Infinite scroll with debouncing
+    let scrollTimeout;
+    container.addEventListener("scroll", () => {
+      if (!initialLoadDone) return;
+      
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        if (distanceFromBottom < 200 && !isLoading && hasMore) {
+          loadReels();
+        }
+      }, 200);
+    });
+
+    // Intersection Observer for autoplay
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+          
+          if (entry.isIntersecting) {
+            if (entry.intersectionRatio >= 0.7) {
+              playVideo(video);
+            }
+          } else {
+            pauseVideo(video);
+          }
+        });
+      },
+      {
+        threshold: [0, 0.7, 1],
+        root: container
+      }
+    );
+
+    async function loadReels() {
+      if (isLoading || !hasMore) {
+        console.log("Skipping load - isLoading:", isLoading, "hasMore:", hasMore);
+        return;
+      }
+
+      console.log("Loading reels page:", currentPage);
+      isLoading = true;
+      loading.style.display = "flex";
+
+      try {
+        const res = await fetch(`${API}/reels?page=${currentPage}&limit=5`);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log("Received reels:", data);
+
+        if (data.reels && data.reels.length > 0) {
+          data.reels.forEach((reel) => createReelElement(reel));
+          currentPage++;
+          hasMore = data.hasMore;
+        } else {
+          hasMore = false;
+          loading.textContent = "No more reels";
+        }
+        
+        if (!initialLoadDone) {
+          initialLoadDone = true;
+          console.log("Initial load complete");
+        }
+        
+      } catch (err) {
+        console.error("Failed to load reels:", err);
+        loading.textContent = "Failed to load reels. Please try refreshing.";
+        hasMore = false;
+      } finally {
+        isLoading = false;
+        
+        setTimeout(() => {
+          if (container.children.length > 0 && !hasMore) {
+            loading.style.display = "none";
+          } else if (container.children.length > 0) {
+            loading.style.display = "flex";
+          }
+        }, 100);
+      }
+    }
+
+    function createReelElement(reel) {
+      const reelDiv = document.createElement("div");
+      reelDiv.className = "reel";
+      reelDiv.dataset.reelId = reel.id;
+
+      const video = document.createElement("video");
+      video.src = `${API}${reel.videoPath}`;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.muted = true;
+
+      video.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (video.paused) {
+          playVideo(video);
+        } else {
+          pauseVideo(video);
+        }
+        showPlayPauseIndicator(reelDiv, video.paused);
+      });
+
+      let viewCounted = false;
+      video.addEventListener("play", () => {
+        if (!viewCounted) {
+          recordView(reel.id);
+          viewCounted = true;
+        }
+      });
+
+      const overlay = document.createElement("div");
+      overlay.className = "reel-overlay";
+
+      overlay.innerHTML = `
+        <div class="play-pause-indicator">⏸️</div>
+        <div class="reel-info">
+          <div class="reel-content">
+            <div class="reel-user">${escapeHtml(reel.userEmail || "User")}</div>
+            <div class="reel-caption">${escapeHtml(reel.caption || "")}</div>
+          </div>
+          <div class="reel-actions">
+            <button class="action-btn like-btn" data-reel-id="${reel.id}">
+              ❤️
+              <span>${reel.likes || 0}</span>
+            </button>
+            <button class="action-btn">
+              💬
+              <span>0</span>
+            </button>
+            <button class="action-btn">
+              👁️
+              <span>${reel.views || 0}</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      reelDiv.appendChild(video);
+      reelDiv.appendChild(overlay);
+      container.appendChild(reelDiv);
+
+      const likeBtn = overlay.querySelector('.like-btn');
+      likeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        likeReel(reel.id, likeBtn);
+      });
+
+      observer.observe(video);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function recordView(reelId) {
+      try {
+        await fetch(`${API}/reels/${reelId}/view`, {
+          method: "POST"
+        });
+      } catch (err) {
+        console.error("Failed to record view:", err);
+      }
+    }
+
+    function playVideo(video) {
+      if (currentPlayingVideo && currentPlayingVideo !== video) {
+        pauseVideo(currentPlayingVideo);
+      }
+
+      video.muted = false;
+
+      const playPromise = video.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.log("Autoplay prevented:", err);
+          video.muted = true;
+          video.play().catch(e => console.log("Muted autoplay also failed:", e));
+        });
+      }
+      
+      currentPlayingVideo = video;
+    }
+
+    function pauseVideo(video) {
+      video.pause();
+    }
+
+    function showPlayPauseIndicator(reelDiv, isPaused) {
+      const indicator = reelDiv.querySelector(".play-pause-indicator");
+      indicator.textContent = isPaused ? "▶️" : "⏸️";
+      
+      reelDiv.classList.add("show-indicator");
+      setTimeout(() => {
+        reelDiv.classList.remove("show-indicator");
+      }, 500);
+    }
+
+    async function likeReel(reelId, button) {
+      try {
+        if (button.disabled) return;
+        button.disabled = true;
+
+        const res = await fetch(`${API}/reels/${reelId}/like`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+        
+        if (res.ok) {
+          button.querySelector("span").textContent = data.likes;
+          button.classList.add("liked");
+          
+          button.style.transform = "scale(1.3)";
+          setTimeout(() => {
+            button.style.transform = "scale(1)";
+            button.disabled = false;
+          }, 200);
+        } else {
+          button.disabled = false;
+        }
+      } catch (err) {
+        console.error("Failed to like reel:", err);
+        button.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>
