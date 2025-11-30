@@ -135,6 +135,13 @@
       color: #999;
     }
 
+    .post-caption {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
     .post-text {
       font-size: 15px;
       line-height: 1.5;
@@ -294,9 +301,9 @@
           const postEl = document.createElement("div");
           postEl.className = "post";
 
-          // Get first letter for avatar
-          const email = feed.caption || "User";
-          const firstLetter = email.charAt(0).toUpperCase();
+          // Use userEmail if available, otherwise fallback to "Anonymous"
+          const userEmail = feed.userEmail || "Anonymous";
+          const firstLetter = userEmail.charAt(0).toUpperCase();
 
           // Format date
           const date = new Date(feed.createdAt);
@@ -320,10 +327,11 @@
             <div class="post-header">
               <div class="post-avatar">${firstLetter}</div>
               <div class="post-info">
-                <h3>${feed.caption || "Anonymous"}</h3>
+                <h3>${userEmail}</h3>
                 <time>${formattedDate}</time>
               </div>
             </div>
+            ${feed.caption ? `<div class="post-caption">${feed.caption}</div>` : ''}
             ${feed.text ? `<div class="post-text">${feed.text}</div>` : ''}
             ${mediaHTML}
             <div class="post-actions">

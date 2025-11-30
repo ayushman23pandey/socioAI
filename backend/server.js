@@ -123,9 +123,10 @@ const reelUpload = multer({
 });
 
 // ===== FEEDS ENDPOINTS =====
-app.post("/feeds", feedUpload.single("file"), (req, res) => {
+app.post("/feeds", authenticate, feedUpload.single("file"), (req, res) => {
   const { caption, text } = req.body;
   const file = req.file;
+  const userId = req.user.id; // Get user ID from authenticated token
 
   if (!file && !text) {
     return res.status(400).json({
@@ -144,20 +145,34 @@ app.post("/feeds", feedUpload.single("file"), (req, res) => {
   const createdAt = new Date().toISOString();
 
   const stmt = db.prepare(`
-    INSERT INTO feeds (type, caption, text, filePath, createdAt)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO feeds (type, caption, text, filePath, createdAt, user_id)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
-  const info = stmt.run(type, caption || null, text || null, filePath, createdAt);
+  const info = stmt.run(type, caption || null, text || null, filePath, createdAt, userId);
 
   res.status(201).json({
     message: "Feed created successfully!",
-    feed: { id: info.lastInsertRowid, type, caption, text, filePath, createdAt },
+    feed: { 
+      id: info.lastInsertRowid, 
+      type, 
+      caption, 
+      text, 
+      filePath, 
+      createdAt,
+      user_id: userId 
+    },
   });
 });
 
+
 app.get("/feeds", (req, res) => {
-  const stmt = db.prepare("SELECT * FROM feeds ORDER BY createdAt DESC");
+  const stmt = db.prepare(`
+    SELECT f.*, u.email as userEmail 
+    FROM feeds f
+    LEFT JOIN users u ON f.user_id = u.id
+    ORDER BY f.createdAt DESC
+  `);
   const feeds = stmt.all();
   res.json(feeds);
 });
